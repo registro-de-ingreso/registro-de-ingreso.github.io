@@ -172,6 +172,10 @@
   .ok-card p { margin: 0; color: var(--muted); }
   .ok-time { margin: 18px 0 6px; font-size: 52px; font-weight: 800; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
   .ok-extra { font-size: 14px; color: var(--muted); min-height: 20px; margin-bottom: 26px; }
+  .ok-aviso {
+    margin: -10px 0 24px; padding: 12px 14px; border-radius: 12px; text-align: left;
+    background: #fef3c7; color: #92400e; font-size: 14px; font-weight: 600; line-height: 1.45;
+  }
   .ok-bar { height: 5px; background: #eef2f7; margin: 0 -32px; }
   .ok-bar i { display: block; height: 100%; width: 100%; transform-origin: left; }
   .ok-card.in .ok-bar i { background: var(--in); }
@@ -484,6 +488,7 @@
     <p id="okText"></p>
     <div class="ok-time" id="okTime"></div>
     <div class="ok-extra" id="okExtra"></div>
+    <div class="ok-aviso hidden" id="okAviso"></div>
     <div class="ok-bar"><i id="okBar"></i></div>
   </div>
 </div>
@@ -546,7 +551,7 @@
         <div class="card kpi"><div class="label"><span class="kdot" style="background:var(--in)"></span>Trabajando ahora</div><div class="value" id="kNow">0</div><div class="hint" id="kNowHint">&nbsp;</div></div>
         <div class="card kpi"><div class="label"><span class="kdot" style="background:var(--brand)"></span>Ingresos hoy</div><div class="value" id="kToday">0</div><div class="hint" id="kTodayHint">&nbsp;</div></div>
         <div class="card kpi"><div class="label"><span class="kdot" style="background:#0891b2"></span>Horas en el rango</div><div class="value" id="kHours">0 h</div><div class="hint">Jornadas cerradas</div></div>
-        <div class="card kpi"><div class="label"><span class="kdot" style="background:#d97706"></span>Sin marcar salida</div><div class="value" id="kMissing">0</div><div class="hint">Días anteriores</div></div>
+        <div class="card kpi"><div class="label"><span class="kdot" style="background:#d97706"></span>No registró salida</div><div class="value" id="kMissing">0</div><div class="hint">Días anteriores</div></div>
         <div class="card kpi"><div class="label"><span class="kdot" style="background:#ea580c"></span>Llegadas tarde</div><div class="value" id="kTarde">0</div><div class="hint" id="kTardeHint">&nbsp;</div></div>
         <div class="card kpi"><div class="label"><span class="kdot" style="background:#dc2626"></span>Faltas</div><div class="value" id="kFaltas">0</div><div class="hint">Días con turno sin marcar</div></div>
       </div>
@@ -677,7 +682,6 @@
    ============================================================ */
 const SUPABASE_URL = 'https://tknrtsgmxhdikhfyypjy.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_y_dlUW5E3lC5oEeK-Oddiw_cszfFyiP';
-const MAX_JORNADA_H = 16;              // igual que en el servidor: un ingreso abierto por más de esto queda "sin salida"
 const COLORS = ['#4263eb', '#0891b2', '#7c3aed', '#db2777', '#059669', '#d97706', '#475569'];
 
 const $ = (s) => document.querySelector(s);
@@ -870,6 +874,9 @@ async function confirmarCodigo() {
     texto: tipo === 'ingreso' ? 'Tu ingreso quedó registrado' : 'Tu salida quedó registrada',
     hora: fHora(r.fecha),
     extra: tipo === 'salida' ? `Trabajaste ${fDuracion(new Date(r.fecha) - new Date(r.ingreso_desde))} hoy` : r.cargo,
+    aviso: r.salida_olvidada
+      ? `El ${new Date(r.salida_olvidada).toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'short' })} no registraste tu salida (entraste a las ${fHora(r.salida_olvidada)}). Quedó anotado en el sistema.`
+      : '',
   });
   pintarPresentes();
 }
@@ -879,21 +886,24 @@ $('#qrCodigo').addEventListener('input', (e) => { e.target.value = e.target.valu
 $('#qrCancelar').addEventListener('click', () => { cerrarQr(); $('#mUser').focus(); });
 
 let okTimer;
-function confirmar({ tipo, titulo, texto, hora, extra }) {
+function confirmar({ tipo, titulo, texto, hora, extra, aviso = '' }) {
   const card = $('#okCard');
   card.className = 'card ok-card ' + (tipo === 'ingreso' ? 'in' : 'out');
   $('#okTitle').textContent = titulo;
   $('#okText').textContent = texto;
   $('#okTime').textContent = hora;
   $('#okExtra').textContent = extra;
+  $('#okAviso').textContent = aviso;
+  $('#okAviso').classList.toggle('hidden', !aviso);
+  const segundos = aviso ? 9 : 4;   // con aviso se deja más tiempo para leerlo
   const bar = $('#okBar');
   bar.style.transition = 'none'; bar.style.transform = 'scaleX(1)';
   $('#ok').classList.remove('hidden');
   requestAnimationFrame(() => requestAnimationFrame(() => {
-    bar.style.transition = 'transform 4s linear'; bar.style.transform = 'scaleX(0)';
+    bar.style.transition = `transform ${segundos}s linear`; bar.style.transform = 'scaleX(0)';
   }));
   clearTimeout(okTimer);
-  okTimer = setTimeout(cerrarOk, 4000);
+  okTimer = setTimeout(cerrarOk, segundos * 1000);
 }
 function cerrarOk() { $('#ok').classList.add('hidden'); $('#mUser').focus(); }
 $('#ok').addEventListener('click', cerrarOk);
@@ -1099,7 +1109,7 @@ function jornadas() {
 }
 function estadoJornada(j) {
   if (j.ingreso && j.salida) return 'cerrada';
-  if (j.ingreso && (Date.now() - new Date(j.ingreso)) / 3600000 <= MAX_JORNADA_H) return 'curso';
+  if (j.ingreso && esHoy(j.ingreso)) return 'curso';   // igual que en el servidor: sin salida al terminar el día = no registró salida
   return 'incompleta';
 }
 
@@ -1124,7 +1134,7 @@ TURNOS.IN = TURNOS.INC = TURNOS.S;
 TURNOS.VB = TURNOS.B = TURNOS.V;
 
 const h12 = (hm) => { const [h, m] = hm.split(':').map(Number); return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h < 12 ? 'a. m.' : 'p. m.'}`; };
-const ESTADOS = { cerrada: 'Completa', curso: 'En curso', incompleta: 'Sin salida', falta: 'Falta', programado: 'Programado' };
+const ESTADOS = { cerrada: 'Completa', curso: 'En curso', incompleta: 'No registró salida', falta: 'Falta', programado: 'Programado' };
 const estadoTexto = (f) => (f.estado === 'incompleta' && !f.ingreso ? 'Sin ingreso' : ESTADOS[f.estado]);
 
 // Compara una jornada (o un turno sin marcación) contra su horario programado
