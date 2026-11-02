@@ -219,7 +219,7 @@
   .page-title h2 { margin: 0; font-size: 24px; letter-spacing: -.02em; }
   .page-title p { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
 
-  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
+  .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px; }
   .kpi { padding: 18px 20px; }
   .kpi .label { font-size: 13px; color: var(--muted); font-weight: 600; display: flex; align-items: center; gap: 8px; }
   .kpi .value { font-size: 30px; font-weight: 800; letter-spacing: -.03em; margin-top: 6px; font-variant-numeric: tabular-nums; }
@@ -276,6 +276,33 @@
   .hint-box { margin: 0; padding: 14px 16px; border-radius: 12px; background: #f1f5f9; color: #334155; font-size: 14px; line-height: 1.5; }
   .emp-form p { color: var(--muted); font-size: 14px; line-height: 1.5; margin: -6px 0 18px; }
   .eq { display: block; font-size: 11px; color: var(--muted); font-weight: 500; }
+  .msg { white-space: pre-line; }
+
+  /* Turnos */
+  .chip { display: inline-grid; place-items: center; min-width: 24px; height: 24px; padding: 0 5px; border-radius: 6px; color: #fff; font-size: 12px; font-weight: 800; }
+  .badges { display: flex; flex-wrap: wrap; gap: 4px; }
+  .b-falta { background: var(--danger-soft); color: var(--danger); }
+  .b-tarde { background: var(--out-soft); color: var(--out); }
+  tr.fila-falta td { background: #fff7f7; }
+  .turnos-card { padding: 20px 24px; margin-bottom: 20px; }
+  .turnos-top { display: flex; gap: 14px; align-items: end; flex-wrap: wrap; margin-bottom: 14px; }
+  .turnos-top label { font-size: 12px; font-weight: 600; color: var(--muted); display: flex; flex-direction: column; gap: 5px; }
+  .turnos-top .input { height: 42px; width: auto; font-size: 14px; }
+  .tol { display: flex; align-items: center; gap: 6px; color: var(--text); font-weight: 500; }
+  .tol .input { width: 80px; }
+  .ayuda { margin-bottom: 12px; font-size: 14px; color: #334155; }
+  .ayuda summary { cursor: pointer; font-weight: 600; color: var(--brand); }
+  .ayuda ol { margin: 10px 0 6px; padding-left: 20px; line-height: 1.6; }
+  .ayuda p { margin: 0; color: var(--muted); }
+  .pegar { height: 120px; padding: 12px 14px; font-family: ui-monospace, Consolas, monospace; font-size: 12px; resize: vertical; margin-bottom: 12px; }
+  .grilla-head { padding: 16px 20px 0; }
+  .grilla-head h3 { margin: 0 0 12px; font-size: 16px; text-transform: none; }
+  .grilla { font-size: 12px; }
+  .grilla th, .grilla td { padding: 4px 3px; text-align: center; white-space: nowrap; }
+  .grilla th { font-size: 11px; line-height: 1.3; }
+  .grilla .g-nombre { text-align: left; padding-left: 16px; min-width: 150px; font-weight: 600; }
+  .grilla .g-dom { background: #f1f5f9; }
+  .grilla .chip { min-width: 22px; height: 22px; font-size: 11px; }
 
   /* QR en el kiosco */
   .qr-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
@@ -488,6 +515,7 @@
     <nav class="tabs">
       <button class="tab active" data-tab="registros">Registros</button>
       <button class="tab" data-tab="empleados">Empleados</button>
+      <button class="tab" data-tab="turnos">Turnos</button>
       <button class="tab" data-tab="equipos">Equipos</button>
     </nav>
     <div class="spacer"></div>
@@ -510,6 +538,8 @@
         <div class="card kpi"><div class="label"><span class="kdot" style="background:var(--brand)"></span>Ingresos hoy</div><div class="value" id="kToday">0</div><div class="hint" id="kTodayHint">&nbsp;</div></div>
         <div class="card kpi"><div class="label"><span class="kdot" style="background:#0891b2"></span>Horas en el rango</div><div class="value" id="kHours">0 h</div><div class="hint">Jornadas cerradas</div></div>
         <div class="card kpi"><div class="label"><span class="kdot" style="background:#d97706"></span>Sin marcar salida</div><div class="value" id="kMissing">0</div><div class="hint">Días anteriores</div></div>
+        <div class="card kpi"><div class="label"><span class="kdot" style="background:#ea580c"></span>Llegadas tarde</div><div class="value" id="kTarde">0</div><div class="hint" id="kTardeHint">&nbsp;</div></div>
+        <div class="card kpi"><div class="label"><span class="kdot" style="background:#dc2626"></span>Faltas</div><div class="value" id="kFaltas">0</div><div class="hint">Días con turno sin marcar</div></div>
       </div>
 
       <div class="card">
@@ -520,12 +550,12 @@
           <div class="grow"></div>
           <button class="btn" id="exportCsv">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
-            Exportar a Excel (CSV)
+            Exportar a Excel
           </button>
         </div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Empleado</th><th>Fecha</th><th>Ingreso</th><th>Salida</th><th>Horas</th><th>Estado</th></tr></thead>
+            <thead><tr><th>Empleado</th><th>Fecha</th><th>Turno</th><th>Ingreso</th><th>Salida</th><th>Horas</th><th>Estado</th></tr></thead>
             <tbody id="regBody"></tbody>
           </table>
         </div>
@@ -561,6 +591,44 @@
             </table>
           </div>
         </div>
+      </div>
+    </section>
+
+    <!-- Turnos -->
+    <section id="tab-turnos" class="hidden">
+      <div class="page-title">
+        <div>
+          <h2>Turnos</h2>
+          <p>Pega la grilla horaria de tu Excel para comparar lo programado con lo que cada persona marcó.</p>
+        </div>
+      </div>
+      <div class="card turnos-card">
+        <div class="turnos-top">
+          <label>Mes <input type="month" class="input" id="tMes"></label>
+          <label>Tolerancia para llegada tarde
+            <span class="tol"><input type="number" class="input" id="tTol" min="0" max="60"> min</span>
+          </label>
+          <button class="btn" id="tTolGuardar">Guardar tolerancia</button>
+        </div>
+        <details class="ayuda">
+          <summary>¿Cómo pegar la grilla?</summary>
+          <ol>
+            <li>En tu Excel de turnos, selecciona desde el <strong>primer nombre</strong> hasta el <strong>último día del mes</strong> del último empleado (puedes incluir las filas de horas, se ignoran).</li>
+            <li>Copia (<strong>Ctrl+C</strong>) y pega aquí abajo (<strong>Ctrl+V</strong>).</li>
+            <li>Oprime <strong>Revisar grilla</strong>, mira la vista previa y luego <strong>Guardar turnos del mes</strong>.</li>
+          </ol>
+          <p>Los nombres deben coincidir con los de la pestaña Empleados. Códigos: M mañana, T tarde, I intermedio, D domingo, F festivo, C evento, L libre, S incapacidad, V vacaciones.</p>
+        </details>
+        <textarea class="input pegar" id="tPegar" placeholder="Pega aquí la grilla copiada de Excel (Ctrl+V)"></textarea>
+        <div class="msg" id="tMsg"></div>
+        <div class="acts">
+          <button class="btn btn-primary" id="tRevisar">Revisar grilla</button>
+          <button class="btn btn-primary hidden" id="tGuardar">Guardar turnos del mes</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="grilla-head"><h3 id="tTitulo">Turnos guardados</h3></div>
+        <div class="table-wrap" id="tGrid"></div>
       </div>
     </section>
 
@@ -965,6 +1033,7 @@ async function abrirAdmin() {
   window.scrollTo(0, 0);
   const hoy = new Date(), hace = new Date(); hace.setDate(hoy.getDate() - 6);
   $('#fFrom').value = ymd(hace); $('#fTo').value = ymd(hoy);
+  $('#tMes').value = ymd(hoy).slice(0, 7);
   $('#regBody').innerHTML = '<tr><td colspan="6" class="empty">Cargando registros…</td></tr>';
   await recargar();
 }
@@ -985,11 +1054,13 @@ async function cargarDatos() {
 async function recargar() {
   if (!(await cargarDatos())) return;
   llenarFiltroEmpleados(); pintarRegistros(); pintarEmpleados(); pintarEquipos(); pintarUbicacion();
+  if (document.activeElement !== $('#tTol')) $('#tTol').value = datos.config?.tolerancia ?? 5;
 }
 
 document.querySelectorAll('.tab').forEach((t) => t.addEventListener('click', () => {
   document.querySelectorAll('.tab').forEach((x) => x.classList.toggle('active', x === t));
-  ['registros', 'empleados', 'equipos'].forEach((n) => $('#tab-' + n).classList.toggle('hidden', t.dataset.tab !== n));
+  ['registros', 'empleados', 'turnos', 'equipos'].forEach((n) => $('#tab-' + n).classList.toggle('hidden', t.dataset.tab !== n));
+  if (t.dataset.tab === 'turnos') cargarTurnosMes();
 }));
 
 function llenarFiltroEmpleados() {
@@ -1025,17 +1096,78 @@ const personaHtml = (e) => e
   ? `<div class="person"><span class="avatar" style="background:${color(e.id)}">${esc(iniciales(e.nombre))}</span><div>${esc(e.nombre)}<small>${esc(e.cargo || '')}</small></div></div>`
   : '<span class="muted">Empleado eliminado</span>';
 
-function filtrarJornadas() {
-  const from = $('#fFrom').value, to = $('#fTo').value, emp = $('#fEmp').value;
-  return jornadas().filter((j) => {
-    const d = ymd(j.ingreso || j.salida);
-    return (!from || d >= from) && (!to || d <= to) && (!emp || j.empleadoId === emp);
-  }).sort((a, b) => (b.ingreso || b.salida).localeCompare(a.ingreso || a.salida));
+/* ---------- Turnos: lo programado en la grilla horaria ---------- */
+// Horario por código y día de la semana (0 = domingo … 6 = sábado). Los "libres" no esperan marcación.
+const TURNOS = {
+  M: { nombre: 'Mañana', color: '#0d9488', horario: (dow) => (dow === 6 ? ['10:00', '14:30'] : ['09:30', '14:30']) },
+  T: { nombre: 'Tarde', color: '#ca8a04', horario: (dow) => (dow >= 1 && dow <= 4 ? ['14:00', '20:00'] : ['14:00', '21:00']) },
+  I: { nombre: 'Intermedio', color: '#c026d3', horario: (dow) => (dow === 6 ? ['10:00', '18:00'] : ['10:30', '18:00']) },
+  D: { nombre: 'Domingo', color: '#db2777', horario: () => ['11:00', '19:00'] },
+  F: { nombre: 'Festivo', color: '#ea580c', horario: () => ['11:00', '19:00'] },
+  C: { nombre: 'Evento', color: '#16a34a', libre: true },
+  L: { nombre: 'Libre', color: '#0284c7', libre: true },
+  S: { nombre: 'Incapacidad', color: '#dc2626', libre: true },
+  V: { nombre: 'Vacaciones', color: '#4f46e5', libre: true },
+};
+TURNOS.IN = TURNOS.INC = TURNOS.S;
+TURNOS.VB = TURNOS.B = TURNOS.V;
+
+const h12 = (hm) => { const [h, m] = hm.split(':').map(Number); return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h < 12 ? 'a. m.' : 'p. m.'}`; };
+const ESTADOS = { cerrada: 'Completa', curso: 'En curso', incompleta: 'Sin salida', falta: 'Falta', programado: 'Programado' };
+const estadoTexto = (f) => (f.estado === 'incompleta' && !f.ingreso ? 'Sin ingreso' : ESTADOS[f.estado]);
+
+// Compara una jornada (o un turno sin marcación) contra su horario programado
+function evaluar(f, tol) {
+  const def = TURNOS[f.codigo];
+  if (def && !def.libre) {
+    const [hi, hf] = def.horario(new Date(f.fecha + 'T12:00').getDay());
+    f.inicio = new Date(`${f.fecha}T${hi}:00`);
+    f.fin = new Date(`${f.fecha}T${hf}:00`);
+    f.horario = `${h12(hi)} – ${h12(hf)}`;
+    f.progMs = f.fin - f.inicio;
+  }
+  f.trabMs = f.ingreso && f.salida ? new Date(f.salida) - new Date(f.ingreso) : 0;
+  if (f.inicio && f.ingreso) { const m = Math.round((new Date(f.ingreso) - f.inicio) / 60000); f.tarde = m > tol ? m : 0; }
+  if (f.fin && f.salida) { const m = Math.round((f.fin - new Date(f.salida)) / 60000); f.antes = m > tol ? m : 0; }
+  if (f.ingreso || f.salida) {
+    f.estado = estadoJornada(f);
+    f.diaLibre = def && def.libre ? def.nombre : null;
+  } else {
+    f.estado = f.inicio > Date.now() ? 'programado' : 'falta';
+  }
+  return f;
 }
+
+// Filas del reporte: cada jornada marcada + cada turno de trabajo en el que no se marcó (falta)
+function analizar() {
+  const tol = datos.config?.tolerancia ?? 5;
+  const turnoDe = {};
+  for (const t of datos.turnos || []) turnoDe[`${t.empleadoId}|${t.fecha}`] = t.codigo;
+  const out = [], marcados = new Set();
+  for (const j of jornadas()) {
+    const fecha = ymd(j.ingreso || j.salida), clave = `${j.empleadoId}|${fecha}`;
+    marcados.add(clave);
+    out.push(evaluar({ ...j, fecha, codigo: turnoDe[clave] }, tol));
+  }
+  for (const t of datos.turnos || []) {
+    const def = TURNOS[t.codigo];
+    if (!def || def.libre || marcados.has(`${t.empleadoId}|${t.fecha}`)) continue;
+    out.push(evaluar({ empleadoId: t.empleadoId, fecha: t.fecha, codigo: t.codigo, ingreso: null, salida: null }, tol));
+  }
+  const from = $('#fFrom').value, to = $('#fTo').value, emp = $('#fEmp').value;
+  return out
+    .filter((f) => (!from || f.fecha >= from) && (!to || f.fecha <= to) && (!emp || f.empleadoId === emp))
+    .sort((a, b) => b.fecha.localeCompare(a.fecha) || (b.ingreso || '').localeCompare(a.ingreso || ''));
+}
+
+const chipTurno = (codigo) => {
+  const def = TURNOS[codigo];
+  return `<span class="chip" style="background:${def ? def.color : '#94a3b8'}" title="${def ? def.nombre : codigo}">${esc(codigo)}</span>`;
+};
 
 function pintarRegistros() {
   const emps = Object.fromEntries(datos.empleados.map((e) => [e.id, e]));
-  const lista = filtrarJornadas();
+  const lista = analizar();
 
   const ahora = datos.empleados.filter((e) => e.activo && e.abierto);
   $('#kNow').textContent = ahora.length;
@@ -1043,49 +1175,311 @@ function pintarRegistros() {
   const incluyeHoy = $('#fTo').value >= ymd(new Date());
   $('#kToday').textContent = incluyeHoy ? datos.registros.filter((r) => r.tipo === 'ingreso' && esHoy(r.fecha)).length : '—';
   $('#kTodayHint').textContent = `de ${datos.empleados.filter((e) => e.activo).length} empleados activos`;
-  const ms = lista.filter((j) => estadoJornada(j) === 'cerrada').reduce((a, j) => a + (new Date(j.salida) - new Date(j.ingreso)), 0);
+  const ms = lista.reduce((a, f) => a + f.trabMs, 0);
   $('#kHours').textContent = `${Math.round(ms / 360000) / 10} h`;
-  $('#kMissing').textContent = lista.filter((j) => estadoJornada(j) === 'incompleta').length;
+  $('#kMissing').textContent = lista.filter((f) => f.estado === 'incompleta').length;
+  const tardes = lista.filter((f) => f.tarde);
+  $('#kTarde').textContent = tardes.length;
+  $('#kTardeHint').textContent = tardes.length ? `${tardes.reduce((a, f) => a + f.tarde, 0)} min en total` : `Tolerancia: ${datos.config?.tolerancia ?? 5} min`;
+  $('#kFaltas').textContent = lista.filter((f) => f.estado === 'falta').length;
 
-  if (!lista.length) { $('#regBody').innerHTML = '<tr><td colspan="6" class="empty">No hay registros en este rango de fechas.</td></tr>'; return; }
+  if (!lista.length) { $('#regBody').innerHTML = '<tr><td colspan="7" class="empty">No hay registros en este rango de fechas.</td></tr>'; return; }
 
-  $('#regBody').innerHTML = lista.map((j) => {
-    const est = estadoJornada(j);
-    const horas = est === 'cerrada' ? fDuracion(new Date(j.salida) - new Date(j.ingreso))
-      : est === 'curso' ? `<span class="muted">${fDuracion(Date.now() - new Date(j.ingreso))}…</span>` : '<span class="muted">—</span>';
-    const badge = est === 'cerrada' ? '<span class="badge b-ok">Completa</span>'
-      : est === 'curso' ? '<span class="badge b-live">● En curso</span>'
-      : `<span class="badge b-warn">${j.ingreso ? 'Sin salida' : 'Sin ingreso'}</span>`;
-    return `<tr>
-      <td>${personaHtml(emps[j.empleadoId])}</td>
-      <td>${fFecha(j.ingreso || j.salida)}</td>
-      <td>${j.ingreso ? `<span class="t-in">${fHora(j.ingreso)}</span>${j.equipoIn ? `<small class="eq">${esc(j.equipoIn)}</small>` : ''}` : '<span class="muted">—</span>'}</td>
-      <td>${j.salida ? `<span class="t-out">${fHora(j.salida)}</span>${j.equipoOut ? `<small class="eq">${esc(j.equipoOut)}</small>` : ''}` : '<span class="muted">—</span>'}</td>
+  $('#regBody').innerHTML = lista.map((f) => {
+    const horas = f.estado === 'cerrada' ? fDuracion(f.trabMs)
+      : f.estado === 'curso' ? `<span class="muted">${fDuracion(Date.now() - new Date(f.ingreso))}…</span>` : '<span class="muted">—</span>';
+    const clase = { cerrada: 'b-ok', curso: 'b-live', incompleta: 'b-warn', falta: 'b-falta', programado: 'b-off' }[f.estado];
+    const badges = [`<span class="badge ${clase}">${f.estado === 'curso' ? '● ' : ''}${estadoTexto(f)}</span>`];
+    if (f.tarde) badges.push(`<span class="badge b-tarde">Tarde ${f.tarde} min</span>`);
+    if (f.antes) badges.push(`<span class="badge b-tarde">Salió ${f.antes} min antes</span>`);
+    if (f.diaLibre) badges.push(`<span class="badge b-off">Marcó en día: ${esc(f.diaLibre)}</span>`);
+    const turno = f.codigo
+      ? `${chipTurno(f.codigo)}<small class="eq">${f.horario || (TURNOS[f.codigo] ? TURNOS[f.codigo].nombre : '')}</small>`
+      : '<span class="muted">—</span>';
+    return `<tr class="${f.estado === 'falta' ? 'fila-falta' : ''}">
+      <td>${personaHtml(emps[f.empleadoId])}</td>
+      <td>${fFecha(f.fecha + 'T12:00')}</td>
+      <td>${turno}</td>
+      <td>${f.ingreso ? `<span class="t-in">${fHora(f.ingreso)}</span>${f.equipoIn ? `<small class="eq">${esc(f.equipoIn)}</small>` : ''}` : '<span class="muted">—</span>'}</td>
+      <td>${f.salida ? `<span class="t-out">${fHora(f.salida)}</span>${f.equipoOut ? `<small class="eq">${esc(f.equipoOut)}</small>` : ''}` : '<span class="muted">—</span>'}</td>
       <td>${horas}</td>
-      <td>${badge}</td>
+      <td><div class="badges">${badges.join('')}</div></td>
     </tr>`;
   }).join('');
 }
 
-$('#exportCsv').addEventListener('click', () => {
+/* ---------- Exportar a Excel (.xlsx con formato) ---------- */
+let excelJsCargando;
+function cargarExcelJS() {
+  if (window.ExcelJS) return Promise.resolve(true);
+  excelJsCargando ??= new Promise((listo) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';
+    s.onload = () => listo(true);
+    s.onerror = () => { excelJsCargando = null; listo(false); };
+    document.head.appendChild(s);
+  });
+  return excelJsCargando;
+}
+
+// Excel guarda fechas sin zona horaria: se pasan los números de la hora local tal cual
+const xlFechaHora = (d) => { const x = new Date(d); return new Date(Date.UTC(x.getFullYear(), x.getMonth(), x.getDate(), x.getHours(), x.getMinutes())); };
+const xlDia = (fecha) => { const [y, m, d] = fecha.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d)); };
+const xlDuracion = (ms) => (ms ? ms / 86400000 : null);
+const fechaCorta = (fecha) => fecha.split('-').reverse().join('/');
+
+const XL = {
+  navy: 'FF0E1A3A', blanco: 'FFFFFFFF', gris: 'FF64748B', borde: 'FFE2E8F0',
+  falta: 'FFFDE2E2', sinSalida: 'FFFEF3C7', tarde: 'FFFFEDD5', tardeTexto: 'FFC2410C', total: 'FFF1F5F9',
+};
+
+function hojaBase(wb, nombre, titulo, columnas) {
+  const ws = wb.addWorksheet(nombre, { views: [{ state: 'frozen', ySplit: 4 }] });
+  ws.columns = columnas.map((c) => ({ key: c.key, width: c.width, style: c.fmt ? { numFmt: c.fmt } : {} }));
+  ws.mergeCells(1, 1, 1, columnas.length);
+  ws.mergeCells(2, 1, 2, columnas.length);
+  ws.getCell(1, 1).value = titulo;
+  ws.getCell(1, 1).font = { bold: true, size: 15, color: { argb: XL.navy } };
+  ws.getCell(2, 1).value = `Del ${fechaCorta($('#fFrom').value)} al ${fechaCorta($('#fTo').value)} · Generado el ${new Date().toLocaleString('es-CO')}`;
+  ws.getCell(2, 1).font = { italic: true, color: { argb: XL.gris } };
+  const h = ws.getRow(4);
+  h.values = columnas.map((c) => c.header);
+  h.height = 32;
+  h.eachCell((c) => {
+    c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: XL.navy } };
+    c.font = { bold: true, color: { argb: XL.blanco } };
+    c.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+  });
+  ws.autoFilter = { from: { row: 4, column: 1 }, to: { row: 4, column: columnas.length } };
+  return ws;
+}
+const pintarFila = (row, argb) => row.eachCell({ includeEmpty: true }, (c) => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb } }; });
+const bordes = (ws) => ws.eachRow((row, n) => { if (n >= 4) row.eachCell({ includeEmpty: true }, (c) => { c.border = { bottom: { style: 'thin', color: { argb: XL.borde } } }; }); });
+
+async function exportarExcel() {
+  const btn = $('#exportCsv');
+  btn.disabled = true;
+  const ok = await cargarExcelJS();
+  btn.disabled = false;
+  if (!ok) return toast('No se pudo preparar el Excel. Revisa la conexión a internet e intenta de nuevo.');
+
   const emps = Object.fromEntries(datos.empleados.map((e) => [e.id, e]));
-  const filas = [['Empleado', 'Usuario', 'Cargo', 'Fecha', 'Ingreso', 'Salida', 'Horas', 'Estado', 'Equipo ingreso', 'Equipo salida', 'Celular a (m) al ingresar', 'Celular a (m) al salir']];
-  for (const j of filtrarJornadas()) {
-    const e = emps[j.empleadoId] || {}, est = estadoJornada(j);
-    filas.push([
-      e.nombre || '', e.usuario || '', e.cargo || '', ymd(j.ingreso || j.salida),
-      j.ingreso ? fHora(j.ingreso) : '', j.salida ? fHora(j.salida) : '',
-      est === 'cerrada' ? ((new Date(j.salida) - new Date(j.ingreso)) / 3600000).toFixed(2).replace('.', ',') : '',
-      { cerrada: 'Completa', curso: 'En curso', incompleta: 'Incompleta' }[est],
-      j.equipoIn || '', j.equipoOut || '', j.distIn ?? '', j.distOut ?? '',
-    ]);
+  const nombreDe = (id) => (emps[id] ? emps[id].nombre : 'Empleado eliminado');
+  const filas = analizar().filter((f) => f.estado !== 'programado')
+    .sort((a, b) => nombreDe(a.empleadoId).localeCompare(nombreDe(b.empleadoId)) || a.fecha.localeCompare(b.fecha));
+
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'Control de Asistencia';
+
+  // Hoja 1: detalle de cada día
+  const det = hojaBase(wb, 'Detalle', 'Registro de asistencia — Detalle', [
+    { key: 'empleado', header: 'Empleado', width: 26 },
+    { key: 'cargo', header: 'Cargo', width: 16 },
+    { key: 'fecha', header: 'Fecha', width: 12, fmt: 'dd/mm/yyyy' },
+    { key: 'dia', header: 'Día', width: 11 },
+    { key: 'turno', header: 'Turno', width: 14 },
+    { key: 'programado', header: 'Horario programado', width: 22 },
+    { key: 'ingreso', header: 'Ingreso', width: 12, fmt: 'h:mm AM/PM' },
+    { key: 'salida', header: 'Salida', width: 12, fmt: 'h:mm AM/PM' },
+    { key: 'trab', header: 'Horas trabajadas', width: 12, fmt: '[h]:mm' },
+    { key: 'prog', header: 'Horas programadas', width: 12, fmt: '[h]:mm' },
+    { key: 'tarde', header: 'Minutos tarde', width: 10 },
+    { key: 'antes', header: 'Minutos salida anticipada', width: 12 },
+    { key: 'estado', header: 'Estado', width: 22 },
+    { key: 'eqIn', header: 'Equipo ingreso', width: 17 },
+    { key: 'eqOut', header: 'Equipo salida', width: 17 },
+    { key: 'distIn', header: 'Distancia del celular al ingresar (m)', width: 15 },
+    { key: 'distOut', header: 'Distancia del celular al salir (m)', width: 15 },
+  ]);
+  for (const f of filas) {
+    const e = emps[f.empleadoId] || {}, def = TURNOS[f.codigo];
+    const row = det.addRow({
+      empleado: nombreDe(f.empleadoId), cargo: e.cargo || '', fecha: xlDia(f.fecha),
+      dia: new Date(f.fecha + 'T12:00').toLocaleDateString('es-CO', { weekday: 'long' }),
+      turno: f.codigo ? `${f.codigo} · ${def ? def.nombre : '?'}` : 'Sin turno', programado: f.horario || '',
+      ingreso: f.ingreso ? xlFechaHora(f.ingreso) : null, salida: f.salida ? xlFechaHora(f.salida) : null,
+      trab: xlDuracion(f.trabMs), prog: xlDuracion(f.progMs),
+      tarde: f.tarde || null, antes: f.antes || null,
+      estado: estadoTexto(f) + (f.diaLibre ? ` (día ${f.diaLibre.toLowerCase()})` : ''),
+      eqIn: f.equipoIn || '', eqOut: f.equipoOut || '', distIn: f.distIn ?? null, distOut: f.distOut ?? null,
+    });
+    if (f.estado === 'falta') pintarFila(row, XL.falta);
+    else if (f.estado === 'incompleta') pintarFila(row, XL.sinSalida);
+    for (const k of ['tarde', 'antes']) {
+      if (f[k]) {
+        const c = row.getCell(k);
+        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: XL.tarde } };
+        c.font = { bold: true, color: { argb: XL.tardeTexto } };
+      }
+    }
   }
-  const csv = '﻿' + filas.map((f) => f.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(';')).join('\r\n');
+  bordes(det);
+
+  // Hoja 2: resumen por empleado
+  const res = hojaBase(wb, 'Resumen', 'Registro de asistencia — Resumen por empleado', [
+    { key: 'empleado', header: 'Empleado', width: 26 },
+    { key: 'cargo', header: 'Cargo', width: 16 },
+    { key: 'diasProg', header: 'Días con turno', width: 10 },
+    { key: 'diasTrab', header: 'Días trabajados', width: 11 },
+    { key: 'faltas', header: 'Faltas', width: 9 },
+    { key: 'tardes', header: 'Llegadas tarde', width: 10 },
+    { key: 'minTarde', header: 'Minutos tarde (total)', width: 12 },
+    { key: 'antes', header: 'Salidas anticipadas', width: 11 },
+    { key: 'sinSalida', header: 'Días sin marcar salida', width: 12 },
+    { key: 'prog', header: 'Horas programadas', width: 12, fmt: '[h]:mm' },
+    { key: 'trab', header: 'Horas trabajadas', width: 12, fmt: '[h]:mm' },
+    { key: 'dif', header: 'Diferencia (horas)', width: 12, fmt: '+0.0;-0.0;0.0' },
+  ]);
+  const porEmp = new Map();
+  for (const f of filas) {
+    const r = porEmp.get(f.empleadoId) || { diasProg: 0, diasTrab: new Set(), faltas: 0, tardes: 0, minTarde: 0, antes: 0, sinSalida: 0, prog: 0, trab: 0 };
+    if (f.progMs) { r.diasProg++; r.prog += f.progMs; }
+    if (f.ingreso) r.diasTrab.add(f.fecha);
+    if (f.estado === 'falta') r.faltas++;
+    if (f.estado === 'incompleta') r.sinSalida++;
+    if (f.tarde) { r.tardes++; r.minTarde += f.tarde; }
+    if (f.antes) r.antes++;
+    r.trab += f.trabMs;
+    porEmp.set(f.empleadoId, r);
+  }
+  const ids = [...porEmp.keys()].sort((a, b) => nombreDe(a).localeCompare(nombreDe(b)));
+  for (const id of ids) {
+    const r = porEmp.get(id);
+    const row = res.addRow({
+      empleado: nombreDe(id), cargo: (emps[id] || {}).cargo || '', diasProg: r.diasProg, diasTrab: r.diasTrab.size,
+      faltas: r.faltas, tardes: r.tardes, minTarde: r.minTarde, antes: r.antes, sinSalida: r.sinSalida,
+      prog: xlDuracion(r.prog) ?? 0, trab: xlDuracion(r.trab) ?? 0, dif: r.diasProg ? (r.trab - r.prog) / 3600000 : null,
+    });
+    if (r.faltas) row.getCell('faltas').font = { bold: true, color: { argb: 'FFB91C1C' } };
+    if (r.tardes) row.getCell('tardes').font = { bold: true, color: { argb: XL.tardeTexto } };
+  }
+  if (ids.length) {
+    const ini = 5, fin = 4 + ids.length;
+    const suma = (col) => ({ formula: `SUM(${col}${ini}:${col}${fin})` });
+    const tot = res.addRow({
+      empleado: 'TOTAL', diasProg: suma('C'), diasTrab: suma('D'), faltas: suma('E'), tardes: suma('F'),
+      minTarde: suma('G'), antes: suma('H'), sinSalida: suma('I'), prog: suma('J'), trab: suma('K'), dif: suma('L'),
+    });
+    pintarFila(tot, XL.total);
+    tot.font = { bold: true };
+  }
+  bordes(res);
+  wb.views = [{ activeTab: 1 }];
+
+  const buf = await wb.xlsx.writeBuffer();
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
-  a.download = `asistencia_${$('#fFrom').value}_a_${$('#fTo').value}.csv`;
+  a.href = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+  a.download = `asistencia_${$('#fFrom').value}_a_${$('#fTo').value}.xlsx`;
   a.click();
-  URL.revokeObjectURL(a.href);
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+$('#exportCsv').addEventListener('click', exportarExcel);
+
+/* ---------- Pestaña Turnos: pegar la grilla del Excel ---------- */
+let turnosMes = [];      // turnos guardados del mes elegido
+let vistaPrevia = null;  // filas leídas del pegado, todavía sin guardar
+
+function rangoMes() {
+  const [y, m] = ($('#tMes').value || ymd(new Date()).slice(0, 7)).split('-').map(Number);
+  const dias = new Date(y, m, 0).getDate(), mm = String(m).padStart(2, '0');
+  return { y, m, dias, desde: `${y}-${mm}-01`, hasta: `${y}-${mm}-${dias}`, fecha: (d) => `${y}-${mm}-${String(d).padStart(2, '0')}` };
+}
+
+const normalizar = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+function buscarEmpleado(nombre) {
+  const n = normalizar(nombre), palabras = n.split(' ');
+  return datos.empleados.find((e) => normalizar(e.nombre) === n)
+    || datos.empleados.find((e) => {
+      const p = normalizar(e.nombre).split(' ');
+      return p.every((x) => palabras.includes(x)) || palabras.every((x) => p.includes(x));
+    });
+}
+
+// Lee lo copiado del Excel: cada fila con un nombre seguido de una letra por día
+function leerGrilla(texto) {
+  const { dias } = rangoMes();
+  const filas = [], errores = [];
+  for (const linea of texto.split(/\r?\n/)) {
+    const celdas = linea.split('\t').map((c) => c.trim());
+    const iNombre = celdas.findIndex((c) => /[a-záéíóúñ]{3,}/i.test(c) && !/^[A-Za-z]{1,3}$/.test(c));
+    if (iNombre < 0) continue;
+    const nombre = celdas[iNombre];
+    const codigos = celdas.slice(iNombre + 1).filter((c) => /^[A-Za-z]{1,3}$/.test(c)).map((c) => c.toUpperCase());
+    if (codigos.length < 7 || normalizar(nombre) === 'nombre') continue;   // títulos, leyenda y filas de horas
+    const emp = buscarEmpleado(nombre);
+    if (!emp) { errores.push(`"${nombre}": no hay un empleado con ese nombre en la app (créalo en Empleados).`); continue; }
+    if (codigos.length !== dias) { errores.push(`${nombre}: tiene ${codigos.length} días y el mes tiene ${dias}.`); continue; }
+    const raros = [...new Set(codigos.filter((c) => !TURNOS[c]))];
+    if (raros.length) { errores.push(`${nombre}: no reconozco estos códigos: ${raros.join(', ')}.`); continue; }
+    filas.push({ emp, codigos });
+  }
+  return { filas, errores };
+}
+
+async function cargarTurnosMes() {
+  const { desde, hasta } = rangoMes();
+  const r = await rpc('admin_turnos', { p_token: token(), p_desde: desde, p_hasta: hasta });
+  if (r.error) return r.codigo === 'sesion' ? salirAdmin(r.error) : toast(r.error);
+  turnosMes = r.turnos;
+  vistaPrevia = null;
+  $('#tGuardar').classList.add('hidden');
+  pintarGrilla();
+}
+
+function pintarGrilla() {
+  const { y, m, dias, fecha } = rangoMes();
+  const mes = new Date(y, m - 1, 1).toLocaleDateString('es-CO', { month: 'long', year: 'numeric' });
+  let filas;
+  if (vistaPrevia) filas = vistaPrevia;
+  else {
+    const de = {};
+    for (const t of turnosMes) de[`${t.empleadoId}|${t.fecha}`] = t.codigo;
+    filas = datos.empleados
+      .map((e) => ({ emp: e, codigos: Array.from({ length: dias }, (_, i) => de[`${e.id}|${fecha(i + 1)}`] || '') }))
+      .filter((f) => f.codigos.some(Boolean));
+  }
+  $('#tTitulo').textContent = vistaPrevia ? `Vista previa de ${mes} (todavía no se ha guardado)` : `Turnos guardados de ${mes}`;
+  if (!filas.length) { $('#tGrid').innerHTML = '<p class="empty">No hay turnos guardados para este mes. Pega la grilla arriba.</p>'; return; }
+  const letras = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
+  const dows = Array.from({ length: dias }, (_, i) => new Date(y, m - 1, i + 1).getDay());
+  $('#tGrid').innerHTML = `<table class="grilla">
+    <thead><tr><th class="g-nombre">Nombre</th>${dows.map((d, i) => `<th class="${d === 0 ? 'g-dom' : ''}">${letras[d]}<br>${i + 1}</th>`).join('')}</tr></thead>
+    <tbody>${filas.map((f) => `<tr><td class="g-nombre">${esc(f.emp.nombre)}</td>${f.codigos.map((c, i) => `<td class="${dows[i] === 0 ? 'g-dom' : ''}">${c ? chipTurno(c) : ''}</td>`).join('')}</tr>`).join('')}</tbody>
+  </table>`;
+}
+
+$('#tMes').addEventListener('change', cargarTurnosMes);
+$('#tRevisar').addEventListener('click', () => {
+  const texto = $('#tPegar').value;
+  if (!texto.trim()) return mostrarError($('#tMsg'), 'Primero pega la grilla copiada de tu Excel.');
+  const { filas, errores } = leerGrilla(texto);
+  if (!filas.length) {
+    return mostrarError($('#tMsg'), errores.length ? errores.join('\n') : 'No encontré filas con nombre y turnos. Copia desde el primer nombre hasta el último día del mes.');
+  }
+  vistaPrevia = filas;
+  pintarGrilla();
+  $('#tGuardar').classList.remove('hidden');
+  if (errores.length) mostrarError($('#tMsg'), `Leí ${filas.length} empleado(s). Estas filas no se van a guardar:\n${errores.join('\n')}`);
+  else { $('#tMsg').classList.remove('show'); toast(`Leí ${filas.length} empleado(s). Revisa la vista previa y guarda.`); }
+});
+$('#tGuardar').addEventListener('click', async () => {
+  if (!vistaPrevia) return;
+  const { desde, hasta, fecha } = rangoMes();
+  const turnos = vistaPrevia.flatMap((f) => f.codigos.map((codigo, i) => ({ empleado_id: f.emp.id, fecha: fecha(i + 1), codigo })));
+  const btn = $('#tGuardar'); btn.disabled = true;
+  const r = await rpc('admin_guardar_turnos', { p_token: token(), p_desde: desde, p_hasta: hasta, p_turnos: turnos });
+  btn.disabled = false;
+  if (r.error) return r.codigo === 'sesion' ? salirAdmin(r.error) : mostrarError($('#tMsg'), r.error);
+  toast(`Turnos guardados (${vistaPrevia.length} empleado(s)).`);
+  $('#tPegar').value = ''; $('#tMsg').classList.remove('show');
+  await cargarTurnosMes();
+  recargar();
+});
+$('#tTolGuardar').addEventListener('click', async () => {
+  const r = await rpc('admin_guardar_tolerancia', { p_token: token(), p_min: parseInt($('#tTol').value, 10) });
+  if (r.error) return r.codigo === 'sesion' ? salirAdmin(r.error) : toast(r.error);
+  toast('Tolerancia guardada.');
+  recargar();
 });
 
 function pintarEmpleados() {
