@@ -576,7 +576,7 @@
           <label class="field"><span>Nombre completo</span><input class="input" id="eNombre" required></label>
           <label class="field"><span>Cargo / área</span><input class="input" id="eCargo"></label>
           <label class="field"><span>Usuario</span><input class="input" id="eUser" required autocapitalize="off"></label>
-          <label class="field"><span>Clave</span><input class="input" id="ePass" required minlength="4"></label>
+          <label class="field"><span>Clave</span><input class="input" id="ePass" required minlength="6" placeholder="Mínimo 6 caracteres"></label>
           <label class="field"><span>Rol</span>
             <select class="input" id="eRol"><option value="empleado">Empleado</option><option value="admin">Administrador</option></select>
           </label>
@@ -656,7 +656,7 @@
   </main>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js" integrity="sha384-mZT2gIty7ZDdOGkxfP6joZcYdMW1Jvj9dRlfpTmaJAKKXTqzygtB22k7FLe+KZC1" crossorigin="anonymous"></script>
 <script>
 /* ============================================================
    Conexión a la base de datos (Supabase).
@@ -1215,6 +1215,8 @@ function cargarExcelJS() {
   excelJsCargando ??= new Promise((listo) => {
     const s = document.createElement('script');
     s.src = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';
+    s.integrity = 'sha384-Pqp51FUN2/qzfxZxBCtF0stpc9ONI6MYZpVqmo8m20SoaQCzf+arZvACkLkirlPz';   // el navegador la rechaza si fue alterada
+    s.crossOrigin = 'anonymous';
     s.onload = () => listo(true);
     s.onerror = () => { excelJsCargando = null; listo(false); };
     document.head.appendChild(s);
@@ -1517,7 +1519,7 @@ $('#empBody').addEventListener('click', async (ev) => {
     r = await rpc('admin_quitar_celular', { p_token: token(), p_empleado: e.id });
     ok = 'Celular desvinculado.';
   } else if (b.dataset.act === 'clave') {
-    const nueva = prompt(`Nueva clave para ${e.nombre} (mínimo 4 caracteres):`);
+    const nueva = prompt(`Nueva clave para ${e.nombre} (mínimo 6 caracteres, que no sea fácil de adivinar):`);
     if (nueva == null) return;
     r = await rpc('admin_cambiar_clave', { p_token: token(), p_id: e.id, p_clave: nueva });
     ok = 'Clave actualizada.';
