@@ -294,7 +294,16 @@
   .ayuda summary { cursor: pointer; font-weight: 600; color: var(--brand); }
   .ayuda ol { margin: 10px 0 6px; padding-left: 20px; line-height: 1.6; }
   .ayuda p { margin: 0; color: var(--muted); }
-  .pegar { height: 120px; padding: 12px 14px; font-family: ui-monospace, Consolas, monospace; font-size: 12px; resize: vertical; margin-bottom: 12px; }
+  .subir {
+    display: flex; align-items: center; gap: 14px; padding: 18px 20px; margin-bottom: 14px; cursor: pointer;
+    border: 2px dashed #c7d2fe; border-radius: 14px; background: #f5f7ff; color: var(--brand); transition: background .15s, border-color .15s;
+  }
+  .subir:hover { background: #eef2ff; border-color: var(--brand); }
+  .subir strong { display: block; font-size: 15px; color: var(--text); }
+  .subir small { display: block; font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .nota { margin: 0 0 12px; font-size: 13px; color: var(--muted); }
+  .ayuda .btn { margin-bottom: 4px; }
+  .pegar { height: 120px; margin-top: 10px; padding: 12px 14px; font-family: ui-monospace, Consolas, monospace; font-size: 12px; resize: vertical; margin-bottom: 12px; }
   .grilla-head { padding: 16px 20px 0; }
   .grilla-head h3 { margin: 0 0 12px; font-size: 16px; text-transform: none; }
   .grilla { font-size: 12px; }
@@ -610,21 +619,23 @@
           </label>
           <button class="btn" id="tTolGuardar">Guardar tolerancia</button>
         </div>
+        <label class="subir" for="tArchivo">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="M9 15l3-3 3 3"/></svg>
+          <span><strong>Subir el Excel de horarios</strong><small id="tArchivoNombre">Archivo .xlsx con la grilla del mes, tal como lo manejas</small></span>
+          <input type="file" id="tArchivo" accept=".xlsx,.xlsm" hidden>
+        </label>
         <details class="ayuda">
-          <summary>¿Cómo pegar la grilla?</summary>
+          <summary>O pega los horarios copiados del Excel</summary>
           <ol>
-            <li>En tu Excel de turnos, selecciona desde el <strong>primer nombre</strong> hasta el <strong>último día del mes</strong> del último empleado (puedes incluir las filas de horas, se ignoran).</li>
-            <li>Copia (<strong>Ctrl+C</strong>) y pega aquí abajo (<strong>Ctrl+V</strong>).</li>
-            <li>Oprime <strong>Revisar grilla</strong>, mira la vista previa y luego <strong>Guardar turnos del mes</strong>.</li>
+            <li>En tu Excel selecciona desde el <strong>primer nombre</strong> hasta el <strong>último día del mes</strong> del último empleado (las filas de horas se ignoran).</li>
+            <li>Copia (<strong>Ctrl+C</strong>), pega aquí abajo (<strong>Ctrl+V</strong>) y oprime <strong>Revisar horarios</strong>.</li>
           </ol>
-          <p>Los nombres deben coincidir con los de la pestaña Empleados. Códigos: M mañana, T tarde, I intermedio, D domingo, F festivo, C evento, L libre, S incapacidad, V vacaciones.</p>
+          <textarea class="input pegar" id="tPegar" placeholder="Pega aquí los horarios copiados de Excel (Ctrl+V)"></textarea>
+          <button class="btn" id="tRevisar">Revisar horarios</button>
         </details>
-        <textarea class="input pegar" id="tPegar" placeholder="Pega aquí la grilla copiada de Excel (Ctrl+V)"></textarea>
+        <p class="nota">Los nombres deben coincidir con los de la pestaña Empleados. Códigos: M mañana, T tarde, I intermedio, D domingo, F festivo, C evento, L libre, S incapacidad, V vacaciones.</p>
         <div class="msg" id="tMsg"></div>
-        <div class="acts">
-          <button class="btn btn-primary" id="tRevisar">Revisar grilla</button>
-          <button class="btn btn-primary hidden" id="tGuardar">Guardar turnos del mes</button>
-        </div>
+        <button class="btn btn-primary hidden" id="tGuardar">Guardar turnos del mes</button>
       </div>
       <div class="card">
         <div class="grilla-head"><h3 id="tTitulo">Turnos guardados</h3></div>
@@ -1397,25 +1408,88 @@ function buscarEmpleado(nombre) {
     });
 }
 
-// Lee lo copiado del Excel: cada fila con un nombre seguido de una letra por día
-function leerGrilla(texto) {
+const esNombre = (c) => /[a-záéíóúñ]{3,}/i.test(c) && !/^[A-Za-z]{1,3}$/.test(c) && normalizar(c) !== 'nombre';
+const esCodigo = (c) => /^[A-Za-z]{1,3}$/.test(c);
+
+// Revisa cada { nombre, codigos } contra los empleados de la app y los días del mes elegido
+function validarFilas(crudas) {
   const { dias } = rangoMes();
   const filas = [], errores = [];
-  for (const linea of texto.split(/\r?\n/)) {
-    const celdas = linea.split('\t').map((c) => c.trim());
-    const iNombre = celdas.findIndex((c) => /[a-záéíóúñ]{3,}/i.test(c) && !/^[A-Za-z]{1,3}$/.test(c));
-    if (iNombre < 0) continue;
-    const nombre = celdas[iNombre];
-    const codigos = celdas.slice(iNombre + 1).filter((c) => /^[A-Za-z]{1,3}$/.test(c)).map((c) => c.toUpperCase());
-    if (codigos.length < 7 || normalizar(nombre) === 'nombre') continue;   // títulos, leyenda y filas de horas
+  for (const { nombre, codigos } of crudas) {
     const emp = buscarEmpleado(nombre);
     if (!emp) { errores.push(`"${nombre}": no hay un empleado con ese nombre en la app (créalo en Empleados).`); continue; }
     if (codigos.length !== dias) { errores.push(`${nombre}: tiene ${codigos.length} días y el mes tiene ${dias}.`); continue; }
-    const raros = [...new Set(codigos.filter((c) => !TURNOS[c]))];
+    const raros = [...new Set(codigos.filter((c) => c && !TURNOS[c]))];
     if (raros.length) { errores.push(`${nombre}: no reconozco estos códigos: ${raros.join(', ')}.`); continue; }
     filas.push({ emp, codigos });
   }
   return { filas, errores };
+}
+
+// Lo pegado desde Excel: cada fila con un nombre seguido de una letra por día
+function leerGrilla(texto) {
+  const crudas = [];
+  for (const linea of texto.split(/\r?\n/)) {
+    const celdas = linea.split('\t').map((c) => c.trim());
+    const iNombre = celdas.findIndex(esNombre);
+    if (iNombre < 0) continue;
+    const codigos = celdas.slice(iNombre + 1).filter(esCodigo).map((c) => c.toUpperCase());
+    if (codigos.length >= 7) crudas.push({ nombre: celdas[iNombre], codigos });   // ignora títulos, leyenda y filas de horas
+  }
+  return validarFilas(crudas);
+}
+
+// El archivo de Excel de horarios: busca la fila con los días 1, 2, 3… y el nombre del mes en el título
+const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+function textoCelda(cell) {
+  const v = cell.value;
+  if (v instanceof Date) return String(v.getUTCDate());
+  return String(cell.text ?? '').trim();
+}
+function leerHoja(ws) {
+  let filaDias = 0, colInicio = 0, nDias = 0;
+  ws.eachRow((row, r) => {
+    if (filaDias) return;
+    for (let c = 1; c <= row.cellCount; c++) {
+      if (textoCelda(row.getCell(c)) !== '1') continue;
+      let n = 1;
+      while (textoCelda(row.getCell(c + n)) === String(n + 1)) n++;
+      if (n >= 28) { filaDias = r; colInicio = c; nDias = n; return; }
+    }
+  });
+  if (!filaDias) return null;
+  let mes = null;
+  for (let r = 1; r <= filaDias && mes === null; r++) {
+    ws.getRow(r).eachCell((cell) => {
+      const i = MESES.indexOf(normalizar(textoCelda(cell)));
+      if (i >= 0 && mes === null) mes = i + 1;
+    });
+  }
+  const crudas = [];
+  ws.eachRow((row, r) => {
+    if (r <= filaDias) return;
+    let nombre = '';
+    for (let c = 1; c < colInicio && !nombre; c++) { const t = textoCelda(row.getCell(c)); if (esNombre(t)) nombre = t; }
+    if (!nombre) return;
+    const codigos = Array.from({ length: nDias }, (_, i) => textoCelda(row.getCell(colInicio + i)).toUpperCase());
+    if (codigos.filter(esCodigo).length >= 7) crudas.push({ nombre, codigos: codigos.map((c) => (esCodigo(c) ? c : '')) });
+  });
+  return { nombre: ws.name, mes, nDias, crudas };
+}
+
+async function leerExcelHorarios(buffer) {
+  if (!(await cargarExcelJS())) return { error: 'No se pudo preparar el lector de Excel. Revisa la conexión a internet.' };
+  const wb = new ExcelJS.Workbook();
+  try { await wb.xlsx.load(buffer); } catch {
+    return { error: 'No pude abrir el archivo. Debe ser un Excel .xlsx o .xlsm (si es .xls antiguo, guárdalo como .xlsx).' };
+  }
+  const hojas = wb.worksheets.map(leerHoja).filter((h) => h && h.crudas.length);
+  if (!hojas.length) return { error: 'No encontré la grilla en el archivo: debe tener una fila con los días 1, 2, 3… y debajo cada nombre con sus turnos.' };
+  // Si hay varias hojas (un mes por hoja), se usa la del mes elegido; si no, la primera con grilla
+  const elegido = rangoMes().m;
+  const hoja = hojas.find((h) => h.mes === elegido) || hojas[0];
+  if (hoja.mes && hoja.mes !== elegido) $('#tMes').value = `${rangoMes().y}-${String(hoja.mes).padStart(2, '0')}`;
+  return { hoja, ...validarFilas(hoja.crudas) };
 }
 
 async function cargarTurnosMes() {
@@ -1451,23 +1525,42 @@ function pintarGrilla() {
 }
 
 $('#tMes').addEventListener('change', cargarTurnosMes);
-$('#tRevisar').addEventListener('click', () => {
-  const texto = $('#tPegar').value;
-  if (!texto.trim()) return mostrarError($('#tMsg'), 'Primero pega la grilla copiada de tu Excel.');
-  const { filas, errores } = leerGrilla(texto);
+
+// Muestra la vista previa de lo leído (del archivo o de lo pegado) y deja listo el botón de guardar
+function mostrarVistaPrevia({ filas, errores }, origen) {
   if (!filas.length) {
-    return mostrarError($('#tMsg'), errores.length ? errores.join('\n') : 'No encontré filas con nombre y turnos. Copia desde el primer nombre hasta el último día del mes.');
+    return mostrarError($('#tMsg'), errores.length ? errores.join('\n') : 'No encontré filas con nombre y turnos.');
   }
   vistaPrevia = filas;
   pintarGrilla();
   $('#tGuardar').classList.remove('hidden');
-  if (errores.length) mostrarError($('#tMsg'), `Leí ${filas.length} empleado(s). Estas filas no se van a guardar:\n${errores.join('\n')}`);
-  else { $('#tMsg').classList.remove('show'); toast(`Leí ${filas.length} empleado(s). Revisa la vista previa y guarda.`); }
+  if (errores.length) mostrarError($('#tMsg'), `${origen}: leí ${filas.length} empleado(s). Estas filas no se van a guardar:\n${errores.join('\n')}`);
+  else { $('#tMsg').classList.remove('show'); toast(`${origen}: leí ${filas.length} empleado(s). Revisa la vista previa y guarda.`); }
+  $('#tGrid').closest('.card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+$('#tArchivo').addEventListener('change', async (ev) => {
+  const archivo = ev.target.files[0];
+  if (!archivo) return;
+  $('#tArchivoNombre').textContent = `Leyendo ${archivo.name}…`;
+  const r = await leerExcelHorarios(await archivo.arrayBuffer());
+  ev.target.value = '';   // permite volver a subir el mismo archivo después de corregirlo
+  $('#tArchivoNombre').textContent = archivo.name;
+  if (r.error) return mostrarError($('#tMsg'), r.error);
+  const mes = r.hoja.mes ? MESES[r.hoja.mes - 1] : 'mes elegido';
+  mostrarVistaPrevia(r, `Hoja "${r.hoja.nombre}" (${mes})`);
+});
+
+$('#tRevisar').addEventListener('click', () => {
+  const texto = $('#tPegar').value;
+  if (!texto.trim()) return mostrarError($('#tMsg'), 'Primero pega los horarios copiados de tu Excel.');
+  mostrarVistaPrevia(leerGrilla(texto), 'Lo pegado');
 });
 $('#tGuardar').addEventListener('click', async () => {
   if (!vistaPrevia) return;
   const { desde, hasta, fecha } = rangoMes();
-  const turnos = vistaPrevia.flatMap((f) => f.codigos.map((codigo, i) => ({ empleado_id: f.emp.id, fecha: fecha(i + 1), codigo })));
+  const turnos = vistaPrevia.flatMap((f) => f.codigos.map((codigo, i) => ({ empleado_id: f.emp.id, fecha: fecha(i + 1), codigo })))
+    .filter((t) => t.codigo);
   const btn = $('#tGuardar'); btn.disabled = true;
   const r = await rpc('admin_guardar_turnos', { p_token: token(), p_desde: desde, p_hasta: hasta, p_turnos: turnos });
   btn.disabled = false;
