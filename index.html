@@ -353,6 +353,13 @@
   .ubic-acts { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .ubic-acts .input { height: 44px; width: auto; font-size: 14px; }
   .ubic .msg { flex-basis: 100%; margin: 0; }
+  .switch { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; font-size: 14px; font-weight: 600; }
+  .switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+  .switch-track { position: relative; width: 44px; height: 24px; flex: none; border-radius: 999px; background: #cbd5e1; transition: background .15s; }
+  .switch-track::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: transform .15s; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+  .switch input:checked + .switch-track { background: var(--in); }
+  .switch input:checked + .switch-track::after { transform: translateX(20px); }
+  .switch input:focus-visible + .switch-track { box-shadow: 0 0 0 4px rgba(66,99,235,.25); }
 
   @media (max-width: 960px) {
     .kiosk { grid-template-columns: 1fr; }
@@ -657,6 +664,18 @@
         </div>
       </div>
       <div class="card ubic" id="ubicCard"></div>
+      <div class="card ubic">
+        <div>
+          <h3>Confirmación con celular</h3>
+          <p>El ingreso siempre pide escanear el QR con el celular. La salida, por ahora, se marca solo con usuario y clave.
+            Si notas que están marcando la salida por otros, activa esta opción.</p>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="qrSalida">
+          <span class="switch-track"></span>
+          <span>Pedir QR también para la salida</span>
+        </label>
+      </div>
       <div class="emp-grid">
         <div class="card emp-form" id="esteEquipo"></div>
         <div class="card">
@@ -799,7 +818,24 @@ async function marcar(tipo) {
   botonesMarcar.forEach((b) => (b.disabled = false));
   if (r.error) return errorMarcacion(r);
   $('#markForm').reset();
+  if (r.directo) return exitoMarcacion(r);   // salida sin QR (según la configuración del administrador)
   mostrarQr(r);
+}
+
+// Pantalla de bienvenida / despedida cuando la marcación quedó guardada
+function exitoMarcacion(r) {
+  const nombre = r.nombre.split(' ')[0], tipo = r.tipo;
+  confirmar({
+    tipo,
+    titulo: tipo === 'ingreso' ? `¡Bienvenido, ${nombre}!` : `¡Hasta luego, ${nombre}!`,
+    texto: tipo === 'ingreso' ? 'Tu ingreso quedó registrado' : 'Tu salida quedó registrada',
+    hora: fHora(r.fecha),
+    extra: tipo === 'salida' ? `Trabajaste ${fDuracion(new Date(r.fecha) - new Date(r.ingreso_desde))} hoy` : r.cargo,
+    aviso: r.salida_olvidada
+      ? `El ${new Date(r.salida_olvidada).toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'short' })} no registraste tu salida (entraste a las ${fHora(r.salida_olvidada)}). Quedó anotado en el sistema.`
+      : '',
+  });
+  pintarPresentes();
 }
 
 // Cualquier error que obliga a empezar de nuevo vuelve al formulario con el mensaje
@@ -858,7 +894,6 @@ async function confirmarCodigo() {
   const codigo = $('#qrCodigo').value.replace(/\D/g, '');
   if (codigo.length !== 6) return mostrarError($('#qrMsg'), 'El código tiene 6 números.');
   const btn = $('#qrConfirmar'); btn.disabled = true;
-  const tipo = retoActual.tipo;
   const r = await rpc('marcar_confirmar', { p_reto: retoActual.id, p_codigo: codigo, p_equipo: equipoLocal.get() });
   btn.disabled = false;
   if (r.error) {
@@ -867,18 +902,7 @@ async function confirmarCodigo() {
     return mostrarError($('#qrMsg'), r.error);
   }
   cerrarQr();
-  const nombre = r.nombre.split(' ')[0];
-  confirmar({
-    tipo,
-    titulo: tipo === 'ingreso' ? `¡Bienvenido, ${nombre}!` : `¡Hasta luego, ${nombre}!`,
-    texto: tipo === 'ingreso' ? 'Tu ingreso quedó registrado' : 'Tu salida quedó registrada',
-    hora: fHora(r.fecha),
-    extra: tipo === 'salida' ? `Trabajaste ${fDuracion(new Date(r.fecha) - new Date(r.ingreso_desde))} hoy` : r.cargo,
-    aviso: r.salida_olvidada
-      ? `El ${new Date(r.salida_olvidada).toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'short' })} no registraste tu salida (entraste a las ${fHora(r.salida_olvidada)}). Quedó anotado en el sistema.`
-      : '',
-  });
-  pintarPresentes();
+  exitoMarcacion(r);
 }
 $('#qrConfirmar').addEventListener('click', confirmarCodigo);
 $('#qrCodigo').addEventListener('keydown', (e) => { if (e.key === 'Enter') confirmarCodigo(); });
@@ -1076,6 +1100,7 @@ async function recargar() {
   if (!(await cargarDatos())) return;
   llenarFiltroEmpleados(); pintarRegistros(); pintarEmpleados(); pintarEquipos(); pintarUbicacion();
   if (document.activeElement !== $('#tTol')) $('#tTol').value = datos.config?.tolerancia ?? 5;
+  $('#qrSalida').checked = !!datos.config?.qr_salida;
 }
 
 document.querySelectorAll('.tab').forEach((t) => t.addEventListener('click', () => {
@@ -1708,6 +1733,13 @@ $('#ubicCard').addEventListener('click', async (ev) => {
     if (!confirm('¿Quitar la ubicación? Ya no se revisará dónde está el celular al marcar.')) return;
     guardarTienda(null, null, c.radio, 'Ubicación quitada.');
   }
+});
+$('#qrSalida').addEventListener('change', async (ev) => {
+  const activo = ev.target.checked;
+  const r = await rpc('admin_guardar_qr_salida', { p_token: token(), p_activo: activo });
+  if (r.error) { ev.target.checked = !activo; return r.codigo === 'sesion' ? salirAdmin(r.error) : toast(r.error); }
+  toast(activo ? 'Listo: la salida también pedirá el QR del celular.' : 'Listo: la salida se marca solo con usuario y clave.');
+  recargar();
 });
 $('#ubicCard').addEventListener('change', (ev) => {
   const c = datos.config || {};
